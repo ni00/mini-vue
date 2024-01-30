@@ -484,6 +484,19 @@ var Vue = (function (exports) {
         return cRef;
     }
 
+    function renderComponentRoot(instance) {
+        var vnode = instance.vnode, render = instance.render;
+        var result;
+        try {
+            if (vnode.shapeFlag & 4 /* ShapeFlags.STATEFUL_COMPONENT */) {
+                result = normalizeVNode(render());
+            }
+        }
+        catch (error) {
+            console.log(error);
+        }
+        return result;
+    }
     function normalizeVNode(child) {
         if (typeof child === 'object') {
             return cloneIfMounted(child);
@@ -496,11 +509,41 @@ var Vue = (function (exports) {
         return child;
     }
 
+    var uid = 0;
+    function createComponentInstance(vnode) {
+        var type = vnode.type;
+        var instance = {
+            uid: uid++,
+            vnode: vnode,
+            type: type,
+            subTree: null,
+            effect: null,
+            update: null,
+            render: null
+        };
+        return instance;
+    }
+    function setupComponent(instance) {
+        setupStatefulComponent(instance);
+    }
+    function setupStatefulComponent(instance) {
+        finishComponentSetup(instance);
+    }
+    function finishComponentSetup(instance) {
+        var Component = instance.type;
+        instance.render = Component.render;
+    }
+
     function createRenderer(options) {
         return baseCreateRenderer(options);
     }
     function baseCreateRenderer(options) {
         var hostInsert = options.insert, hostPatchProp = options.patchProp, hostCreateElement = options.createElement, hostSetElementText = options.setElementText, hostRemove = options.remove, hostCreateText = options.createText, hostSetText = options.setText, hostCreateComment = options.createComment;
+        var processComponent = function (oldVNode, newVNode, container, anchor) {
+            if (oldVNode == null) {
+                mountComponent(newVNode, container, anchor);
+            }
+        };
         var processFragment = function (oldVNode, newVNode, container, anchor) {
             if (oldVNode == null) {
                 mountChildren(newVNode.children, container, anchor);
@@ -537,6 +580,24 @@ var Vue = (function (exports) {
             else {
                 patchElement(oldVNode, newVNode);
             }
+        };
+        var mountComponent = function (initialVNode, container, anchor) {
+            initialVNode.component = createComponentInstance(initialVNode);
+            var instance = initialVNode.component;
+            setupComponent(instance);
+            setupRenderEffect(instance, initialVNode, container, anchor);
+        };
+        var setupRenderEffect = function (instance, initialVNode, container, anchor) {
+            var componentUpdateFn = function () {
+                if (!instance.isMounted) {
+                    var subTree = (instance.subTree = renderComponentRoot(instance));
+                    patch(null, subTree, container, anchor);
+                    initialVNode.el = subTree.el;
+                }
+            };
+            var effect = (instance.effect = new ReactiveEffect(componentUpdateFn, function () { return queuePreFlushCb(update); }));
+            var update = (instance.update = function () { return effect.run(); });
+            update();
         };
         var mountElement = function (vnode, container, anchor) {
             var type = vnode.type, props = vnode.props, shapeFlag = vnode.shapeFlag;
@@ -627,6 +688,9 @@ var Vue = (function (exports) {
                 default:
                     if (shapeFlag & 1 /* ShapeFlags.ELEMENT */) {
                         processElement(oldVNode, newVNode, container, anchor);
+                    }
+                    else if (shapeFlag & 6 /* ShapeFlags.COMPONENT */) {
+                        processComponent(oldVNode, newVNode, container, anchor);
                     }
             }
         };
