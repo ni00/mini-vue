@@ -489,7 +489,6 @@ var Vue = (function (exports) {
         var result;
         try {
             if (vnode.shapeFlag & 4 /* ShapeFlags.STATEFUL_COMPONENT */) {
-                console.log(data);
                 result = normalizeVNode(render.call(data));
             }
         }
@@ -510,6 +509,18 @@ var Vue = (function (exports) {
         return child;
     }
 
+    function injectHook(type, hook, target) {
+        if (target) {
+            target[type] = hook;
+            return hook;
+        }
+    }
+    var createHook = function (lifecycle) {
+        return function (hook, target) { return injectHook(lifecycle, hook, target); };
+    };
+    var onBeforeMount = createHook("bm" /* LifecycleHooks.BEFORE_MOUNT */);
+    var onMounted = createHook("m" /* LifecycleHooks.MOUNTED */);
+
     var uid = 0;
     function createComponentInstance(vnode) {
         var type = vnode.type;
@@ -520,7 +531,12 @@ var Vue = (function (exports) {
             subTree: null,
             effect: null,
             update: null,
-            render: null
+            render: null,
+            isMounted: false,
+            bc: null,
+            c: null,
+            bm: null,
+            m: null
         };
         return instance;
     }
@@ -536,13 +552,27 @@ var Vue = (function (exports) {
         applyOptions(instance);
     }
     function applyOptions(instance) {
-        var dataOptions = instance.type.data;
+        var _a = instance.type, dataOptions = _a.data, beforeCreate = _a.beforeCreate, created = _a.created, beforeMount = _a.beforeMount, mounted = _a.mounted;
+        if (beforeCreate) {
+            callHook(beforeCreate);
+        }
         if (dataOptions) {
             var data = dataOptions();
             if (isObject(data)) {
                 instance.data = reactive(data);
             }
         }
+        if (created) {
+            callHook(created);
+        }
+        function registerLifecycleHook(register, hook) {
+            register(hook, instance);
+        }
+        registerLifecycleHook(onBeforeMount, beforeMount);
+        registerLifecycleHook(onMounted, mounted);
+    }
+    function callHook(hook) {
+        hook();
     }
 
     function createRenderer(options) {
@@ -601,8 +631,15 @@ var Vue = (function (exports) {
         var setupRenderEffect = function (instance, initialVNode, container, anchor) {
             var componentUpdateFn = function () {
                 if (!instance.isMounted) {
+                    var bm = instance.bm, m = instance.m;
+                    if (bm) {
+                        bm();
+                    }
                     var subTree = (instance.subTree = renderComponentRoot(instance));
                     patch(null, subTree, container, anchor);
+                    if (m) {
+                        m();
+                    }
                     initialVNode.el = subTree.el;
                 }
             };
