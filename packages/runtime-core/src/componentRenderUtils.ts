@@ -3,16 +3,16 @@ import { Text } from './vnode'
 import { ShapeFlags } from 'packages/shared/src/shapeFlags'
 
 export function renderComponentRoot(instance) {
-  const { vnode, render } = instance
+  const { vnode, render,data } = instance
   
   let result
 
   try {
-    if (vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
-      result = normalizeVNode(render!())
+    if (vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {   
+      result = normalizeVNode(render!.call(data))
     }
   } catch (error) {
-    console.log(error)
+    console.error(error)
   }
 
   return result

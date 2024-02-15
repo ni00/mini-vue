@@ -485,15 +485,16 @@ var Vue = (function (exports) {
     }
 
     function renderComponentRoot(instance) {
-        var vnode = instance.vnode, render = instance.render;
+        var vnode = instance.vnode, render = instance.render, data = instance.data;
         var result;
         try {
             if (vnode.shapeFlag & 4 /* ShapeFlags.STATEFUL_COMPONENT */) {
-                result = normalizeVNode(render());
+                console.log(data);
+                result = normalizeVNode(render.call(data));
             }
         }
         catch (error) {
-            console.log(error);
+            console.error(error);
         }
         return result;
     }
@@ -532,6 +533,16 @@ var Vue = (function (exports) {
     function finishComponentSetup(instance) {
         var Component = instance.type;
         instance.render = Component.render;
+        applyOptions(instance);
+    }
+    function applyOptions(instance) {
+        var dataOptions = instance.type.data;
+        if (dataOptions) {
+            var data = dataOptions();
+            if (isObject(data)) {
+                instance.data = reactive(data);
+            }
+        }
     }
 
     function createRenderer(options) {
