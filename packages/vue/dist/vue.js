@@ -544,17 +544,33 @@ var Vue = (function (exports) {
         setupStatefulComponent(instance);
     }
     function setupStatefulComponent(instance) {
+        var Component = instance.type;
+        var setup = Component.setup;
+        if (setup) {
+            var setupResult = setup();
+            handleSetupResult(instance, setupResult);
+        }
+        else {
+            finishComponentSetup(instance);
+        }
+    }
+    function handleSetupResult(instance, setupResult) {
+        if (isFunction(setupResult)) {
+            instance.render = setupResult;
+        }
         finishComponentSetup(instance);
     }
     function finishComponentSetup(instance) {
         var Component = instance.type;
-        instance.render = Component.render;
+        if (!instance.render) {
+            instance.render = Component.render;
+        }
         applyOptions(instance);
     }
     function applyOptions(instance) {
         var _a = instance.type, dataOptions = _a.data, beforeCreate = _a.beforeCreate, created = _a.created, beforeMount = _a.beforeMount, mounted = _a.mounted;
         if (beforeCreate) {
-            callHook(beforeCreate);
+            callHook(beforeCreate, instance.data);
         }
         if (dataOptions) {
             var data = dataOptions();
@@ -563,16 +579,16 @@ var Vue = (function (exports) {
             }
         }
         if (created) {
-            callHook(created);
+            callHook(created, instance.data);
         }
         function registerLifecycleHook(register, hook) {
-            register(hook, instance);
+            register(hook === null || hook === void 0 ? void 0 : hook.bind(instance.data), instance);
         }
         registerLifecycleHook(onBeforeMount, beforeMount);
         registerLifecycleHook(onMounted, mounted);
     }
-    function callHook(hook) {
-        hook();
+    function callHook(hook, proxy) {
+        hook.bind(proxy)();
     }
 
     function createRenderer(options) {
@@ -641,6 +657,18 @@ var Vue = (function (exports) {
                         m();
                     }
                     initialVNode.el = subTree.el;
+                    instance.isMounted = true;
+                }
+                else {
+                    var next = instance.next, vnode = instance.vnode;
+                    if (!next) {
+                        next = vnode;
+                    }
+                    var nextTree = renderComponentRoot(instance);
+                    var prevTree = instance.subTree;
+                    instance.subTree = nextTree;
+                    patch(prevTree, nextTree, container, anchor);
+                    next.el = nextTree.el;
                 }
             };
             var effect = (instance.effect = new ReactiveEffect(componentUpdateFn, function () { return queuePreFlushCb(update); }));
