@@ -248,9 +248,14 @@ function baseCreateRenderer(options: RendererOptions): any {
           i++
         }
       }
+      // 4.旧节点多于新节点
+    } else if (i > newChildrenEnd) {
+      while (i <= oldChildrenEnd) {
+        unmount(oldChildren[i])
+        i++
+      }
     }
-
-    
+    // 5.
   }
 
   const patchProps = (el: Element, vnode, oldProps, newProps) => {
