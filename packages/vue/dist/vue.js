@@ -607,7 +607,7 @@ var Vue = (function (exports) {
                 mountChildren(newVNode.children, container, anchor);
             }
             else {
-                patchChildren(oldVNode, newVNode, container);
+                patchChildren(oldVNode, newVNode, container, anchor);
             }
         };
         var processCommentNode = function (oldVNode, newVNode, container, anchor) {
@@ -696,7 +696,7 @@ var Vue = (function (exports) {
             var el = (newVNode.el = oldVNode.el);
             var oldProps = oldVNode.props || EMPTY_OBJ;
             var newProps = newVNode.props || EMPTY_OBJ;
-            patchChildren(oldVNode, newVNode, el);
+            patchChildren(oldVNode, newVNode, el, null);
             patchProps(el, newVNode, oldProps, newProps);
         };
         var mountChildren = function (children, container, anchor) {
@@ -722,7 +722,7 @@ var Vue = (function (exports) {
                 if (prevShapeFlag & 16 /* ShapeFlags.ARRAY_CHILDREN */) {
                     if (shapeFlag & 16 /* ShapeFlags.ARRAY_CHILDREN */) {
                         //diff
-                        patchKeyedChildren(c1, c2, container);
+                        patchKeyedChildren(c1, c2, container, anchor);
                     }
                 }
                 else {
@@ -737,6 +737,7 @@ var Vue = (function (exports) {
             var newChildrenLength = newChildren.length;
             var oldChildrenEnd = oldChildren.length - 1;
             var newChildrenEnd = newChildrenLength - 1;
+            // 1.自前先后
             while (i <= oldChildrenEnd && i <= newChildrenEnd) {
                 var oldVNode = oldChildren[i];
                 var newVNode = normalizeVNode(newChildren[i]);
@@ -748,6 +749,7 @@ var Vue = (function (exports) {
                 }
                 i++;
             }
+            // 2.自后向前
             while (i <= oldChildrenEnd && i <= newChildrenEnd) {
                 var oldVNode = oldChildren[oldChildrenEnd];
                 var newVNode = normalizeVNode(newChildren[newChildrenEnd]);
@@ -759,6 +761,17 @@ var Vue = (function (exports) {
                 }
                 oldChildrenEnd--;
                 newChildrenEnd--;
+            }
+            // 3.新节点多于旧节点
+            if (i > oldChildrenEnd) {
+                if (i <= newChildrenEnd) {
+                    var nextPos = newChildrenEnd + 1;
+                    var anchor = nextPos < newChildrenLength ? newChildren[nextPos].el : parentAnchor;
+                    while (i <= newChildrenEnd) {
+                        patch(null, normalizeVNode(newChildren[i]), container, anchor);
+                        i++;
+                    }
+                }
             }
         };
         var patchProps = function (el, vnode, oldProps, newProps) {

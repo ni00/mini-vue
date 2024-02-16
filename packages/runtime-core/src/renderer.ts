@@ -214,7 +214,7 @@ function baseCreateRenderer(options: RendererOptions): any {
     const newChildrenLength = newChildren.length
     let oldChildrenEnd = oldChildren.length - 1
     let newChildrenEnd = newChildrenLength - 1
-
+    // 1.自前先后
     while (i <= oldChildrenEnd && i <= newChildrenEnd) {
       const oldVNode = oldChildren[i]
       const newVNode = normalizeVNode(newChildren[i])
@@ -225,7 +225,7 @@ function baseCreateRenderer(options: RendererOptions): any {
       }
       i++
     }
-
+    // 2.自后向前
     while (i <= oldChildrenEnd && i <= newChildrenEnd) {
       const oldVNode = oldChildren[oldChildrenEnd]
       const newVNode = normalizeVNode(newChildren[newChildrenEnd])
@@ -237,6 +237,20 @@ function baseCreateRenderer(options: RendererOptions): any {
       oldChildrenEnd--
       newChildrenEnd--
     }
+    // 3.新节点多于旧节点
+    if (i > oldChildrenEnd) {
+      if (i <= newChildrenEnd) {
+        const nextPos = newChildrenEnd + 1
+        const anchor =
+          nextPos < newChildrenLength ? newChildren[nextPos].el : parentAnchor
+        while (i <= newChildrenEnd) {
+          patch(null, normalizeVNode(newChildren[i]), container, anchor)
+          i++
+        }
+      }
+    }
+
+    
   }
 
   const patchProps = (el: Element, vnode, oldProps, newProps) => {
