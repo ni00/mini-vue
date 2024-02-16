@@ -220,11 +220,22 @@ function baseCreateRenderer(options: RendererOptions): any {
       const newVNode = normalizeVNode(newChildren[i])
       if (isSameVNodeType(oldVNode, newVNode)) {
         patch(oldVNode, newVNode, container, null)
-      }
-      else {
+      } else {
         break
       }
       i++
+    }
+
+    while (i <= oldChildrenEnd && i <= newChildrenEnd) {
+      const oldVNode = oldChildren[oldChildrenEnd]
+      const newVNode = normalizeVNode(newChildren[newChildrenEnd])
+      if (isSameVNodeType(oldVNode, newVNode)) {
+        patch(oldVNode, newVNode, container, null)
+      } else {
+        break
+      }
+      oldChildrenEnd--
+      newChildrenEnd--
     }
   }
 

@@ -748,6 +748,18 @@ var Vue = (function (exports) {
                 }
                 i++;
             }
+            while (i <= oldChildrenEnd && i <= newChildrenEnd) {
+                var oldVNode = oldChildren[oldChildrenEnd];
+                var newVNode = normalizeVNode(newChildren[newChildrenEnd]);
+                if (isSameVNodeType(oldVNode, newVNode)) {
+                    patch(oldVNode, newVNode, container, null);
+                }
+                else {
+                    break;
+                }
+                oldChildrenEnd--;
+                newChildrenEnd--;
+            }
         };
         var patchProps = function (el, vnode, oldProps, newProps) {
             if (oldProps !== newProps) {
