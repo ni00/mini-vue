@@ -3,7 +3,7 @@ import { Fragment, Text, Comment, isSameVNodeType } from './vnode'
 import { ShapeFlags } from 'packages/shared/src/shapeFlags'
 import { normalizeVNode, renderComponentRoot } from './componentRenderUtils'
 import { createComponentInstance, setupComponent } from './component'
-import { ReactiveEffect, effect } from '../../reactivity/src/effect'
+import { ReactiveEffect } from '../../reactivity/src/effect'
 import { queuePreFlushCb } from './scheduler'
 
 export interface RendererOptions {
@@ -139,6 +139,7 @@ function baseCreateRenderer(options: RendererOptions): any {
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
       hostSetElementText(el, vnode.children)
     } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+      mountChildren(vnode.children, el, anchor)
     }
 
     if (props) {
@@ -189,6 +190,7 @@ function baseCreateRenderer(options: RendererOptions): any {
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
           //diff
+          patchKeyedChildren(c1, c2, container, anchor)
         } else {
           //unmount
         }
@@ -199,6 +201,30 @@ function baseCreateRenderer(options: RendererOptions): any {
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         }
       }
+    }
+  }
+
+  const patchKeyedChildren = (
+    oldChildren,
+    newChildren,
+    container,
+    parentAnchor
+  ) => {
+    let i = 0
+    const newChildrenLength = newChildren.length
+    let oldChildrenEnd = oldChildren.length - 1
+    let newChildrenEnd = newChildrenLength - 1
+
+    while (i <= oldChildrenEnd && i <= newChildrenEnd) {
+      const oldVNode = oldChildren[i]
+      const newVNode = normalizeVNode(newChildren[i])
+      if (isSameVNodeType(oldVNode, newVNode)) {
+        patch(oldVNode, newVNode, container, null)
+      }
+      else {
+        break
+      }
+      i++
     }
   }
 
