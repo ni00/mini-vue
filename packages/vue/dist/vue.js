@@ -1210,9 +1210,125 @@ var Vue = (function (exports) {
         (_a = ensureRenderer()).render.apply(_a, __spreadArray([], __read(args), false));
     };
 
+    function createParserContext(content) {
+        return {
+            source: content
+        };
+    }
+    function createRoot(children) {
+        return {
+            type: 0 /* NodeTypes.ROOT */,
+            children: children,
+            loc: {}
+        };
+    }
+    function baseParse(content) {
+        var context = createParserContext(content);
+        var children = parseChildren(context, []);
+        return createRoot(children);
+    }
+    function parseChildren(context, ancestors) {
+        var nodes = [];
+        while (!isEnd(context, ancestors)) {
+            var s = context.source;
+            var node = void 0;
+            if (startsWith(s, '{{')) ;
+            else if (s[0] === '<') {
+                if (/[a-z]/i.test(s[1])) {
+                    node = parseElement(context, ancestors);
+                }
+            }
+            if (!node) {
+                node = parseText(context);
+            }
+            pushNode(nodes, node);
+        }
+        return nodes;
+    }
+    function parseElement(context, ancestors) {
+        var element = parseTag(context);
+        ancestors.push(element);
+        var children = parseChildren(context, ancestors);
+        ancestors.pop();
+        element.children = children;
+        if (startsWithEndTagOpen(context.source, element.tag)) {
+            parseTag(context);
+        }
+        return element;
+    }
+    function parseTag(context, type) {
+        var match = /^<\/?([a-z][^\r\n\t\f />]*)/i.exec(context.source);
+        var tag = match[1];
+        advanceBy(context, match[0].length);
+        var isSelfClosing = startsWith(context.source, '/>');
+        advanceBy(context, isSelfClosing ? 2 : 1);
+        return {
+            type: 1 /* NodeTypes.ELEMENT */,
+            tag: tag,
+            tagType: 0 /* ElementTypes.ELEMENT */,
+            children: [],
+            props: []
+        };
+    }
+    function parseText(context) {
+        var endTokens = ['<', '{{'];
+        var endIndex = context.source.length;
+        for (var i = 0; i < endTokens.length; i++) {
+            var index = context.source.indexOf(endTokens[i], 1);
+            if (index !== -1 && endIndex > index) {
+                endIndex = index;
+            }
+        }
+        var content = parseTextData(context, endIndex);
+        return {
+            type: 2 /* NodeTypes.TEXT */,
+            content: content
+        };
+    }
+    function parseTextData(context, length) {
+        var rawText = context.source.slice(0, length);
+        advanceBy(context, length);
+        return rawText;
+    }
+    function pushNode(nodes, node) {
+        nodes.push(node);
+    }
+    function isEnd(context, ancestors) {
+        var s = context.source;
+        if (startsWith(s, '</')) {
+            for (var i = ancestors.length - 1; i >= 0; i--) {
+                if (startsWithEndTagOpen(s, ancestors[i].tag)) {
+                    return true;
+                }
+            }
+        }
+        return !s;
+    }
+    function startsWithEndTagOpen(source, tag) {
+        return startsWith(source, '</');
+    }
+    function startsWith(sources, searchString) {
+        return sources.startsWith(searchString);
+    }
+    function advanceBy(context, numberOfCharacters) {
+        var source = context.source;
+        context.source = source.slice(numberOfCharacters);
+    }
+
+    function baseCompile(template, options) {
+        var ast = baseParse(template);
+        console.log(JSON.stringify(ast));
+        return {};
+    }
+
+    function compile(template, options) {
+        return baseCompile(template);
+    }
+
     exports.Comment = Comment;
     exports.Fragment = Fragment;
     exports.Text = Text;
+    exports.compile = compile;
     exports.computed = computed;
     exports.effect = effect;
     exports.h = h;
